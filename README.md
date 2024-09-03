@@ -1,5 +1,7 @@
 # Makky
 
+[![CI](https://img.shields.io/github/actions/workflow/status/rossnomann/makky/ci.yml?branch=master&style=flat-square)](https://github.com/rossnomann/makky/actions/)
+
 A dead simple tool to manage files in NixOS. Use at your own risk.
 
 ## Usage

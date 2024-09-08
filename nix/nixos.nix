@@ -70,7 +70,7 @@ in
             ''
               if [ -f ${cfg.metadataPath} ]; then
                 ${cfg.executablePath} unlink ${cfg.metadataPath} ${cfg.targetRoot}
-                rm ${cfg.metadataPath}
+                rm -f ${cfg.metadataPath}
               fi
               cp ${metadataStorePath} ${cfg.metadataPath}
               ${cfg.executablePath} link ${metadataStorePath} ${cfg.targetRoot}

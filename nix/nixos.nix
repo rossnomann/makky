@@ -7,6 +7,7 @@
 }:
 let
   cfg = config.makky;
+  utils = import ./utils.nix { inherit lib; };
 in
 {
   options.makky = {
@@ -14,15 +15,50 @@ in
     files = lib.mkOption {
       type = lib.types.attrsOf (
         lib.types.submodule (
-          { name, ... }:
+          { name, config, ... }:
           {
             options = {
-              source = lib.mkOption { type = lib.types.path; };
+              store = {
+                name = lib.mkOption {
+                  type = lib.types.str;
+                };
+                path = lib.mkOption {
+                  type = lib.types.path;
+                };
+              };
+              source = lib.mkOption {
+                type = lib.types.path;
+              };
+              text = lib.mkOption {
+                type = lib.types.nullOr lib.types.lines;
+                default = null;
+              };
+              executable = lib.mkOption {
+                type = lib.types.bool;
+                default = false;
+              };
               target = lib.mkOption { type = lib.types.str; };
             };
-            config = {
-              target = lib.mkDefault name;
-            };
+            config =
+              let
+                storeName = utils.mkStoreName "makky_" name;
+              in
+              {
+                store = {
+                  name = lib.mkDefault storeName;
+                  path = lib.mkDefault (utils.mkStorePath "makky_" config.source);
+                };
+                target = lib.mkDefault name;
+                source = lib.mkIf (config.text != null) (
+                  lib.mkDefault (
+                    pkgs.writeTextFile {
+                      name = storeName;
+                      executable = config.executable == true;
+                      text = config.text;
+                    }
+                  )
+                );
+              };
           }
         )
       );
@@ -44,28 +80,35 @@ in
     lib.mkIf (cfg.enable && cfg.files != { } && cfg.targetRoot != null && cfg.metadataPath != null)
       (
         let
-          cmdRegister = "${cfg.executablePath} register";
-          packageFiles = pkgs.runCommandLocal "makky-files" { } (
-            ''
-              mkdir -p $out
-            ''
-            + lib.strings.concatStrings (
-              lib.mapAttrsToList (n: v: ''
-                ${cmdRegister} $out/makky.metadata ${
-                  lib.escapeShellArgs [
-                    v.source
-                    v.target
-                  ]
-                }
-              '') cfg.files
-            )
-          );
+          packageFiles =
+            pkgs.runCommandLocal "makky-files"
+              {
+              }
+              (
+                let
+                  register = "${cfg.executablePath} register";
+                  registerFiles = lib.strings.concatStrings (
+                    lib.mapAttrsToList (n: v: ''
+                      ${register} $out/share/makky/makky.metadata ${
+                        lib.escapeShellArgs [
+                          v.store.path
+                          v.target
+                        ]
+                      }
+                    '') cfg.files
+                  );
+                in
+                ''
+                  mkdir -p $out/share/makky
+                  ${registerFiles}
+                ''
+              );
         in
         {
           environment.systemPackages = [ packageFiles ];
           system.userActivationScripts.makkyLink =
             let
-              metadataStorePath = "${packageFiles}/makky.metadata";
+              metadataStorePath = "${packageFiles}/share/makky/makky.metadata";
             in
             ''
               if [ -f ${cfg.metadataPath} ]; then

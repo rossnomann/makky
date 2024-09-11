@@ -109,6 +109,7 @@ in
           system.userActivationScripts.makkyLink =
             let
               metadataStorePath = "${packageFiles}/share/makky/makky.metadata";
+              diff = "${pkgs.diffutils}/bin/diff";
             in
             ''
               function __makky_activate() {
@@ -116,11 +117,12 @@ in
                 local metadata_store=${metadataStorePath}
                 local target_root=${cfg.targetRoot}
                 local makky_executable=${cfg.executablePath}
+                local diff_executable=${diff}
                 local do_unlink=false
                 local do_link=false
 
                 if [ -f $metadata_actual ]; then
-                  diff $metadata_actual $metadata_store 2>&1 > /dev/null
+                  $diff_executable $metadata_actual $metadata_store 2>&1 > /dev/null
                   diff_status=$?
                   if [ $diff_status -ne 0 ]; then
                     do_unlink=true

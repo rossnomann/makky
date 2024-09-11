@@ -122,8 +122,10 @@ in
                 local do_link=false
 
                 if [ -f $metadata_actual ]; then
-                  $diff_executable $metadata_actual $metadata_store 2>&1 > /dev/null
+                  set +e
+                  $diff_executable -q $metadata_actual $metadata_store
                   diff_status=$?
+                  set -e
                   if [ $diff_status -ne 0 ]; then
                     do_unlink=true
                     do_link=true

@@ -111,12 +111,37 @@ in
               metadataStorePath = "${packageFiles}/share/makky/makky.metadata";
             in
             ''
-              if [ -f ${cfg.metadataPath} ]; then
-                ${cfg.executablePath} unlink ${cfg.metadataPath} ${cfg.targetRoot}
-                rm -f ${cfg.metadataPath}
-              fi
-              cp ${metadataStorePath} ${cfg.metadataPath}
-              ${cfg.executablePath} link ${metadataStorePath} ${cfg.targetRoot}
+              function __makky_activate() {
+                local metadata_actual=${cfg.metadataPath}
+                local metadata_store=${metadataStorePath}
+                local target_root=${cfg.targetRoot}
+                local makky_executable=${cfg.executablePath}
+                local do_unlink=false
+                local do_link=false
+
+                if [ -f $metadata_actual ]; then
+                  diff $metadata_actual $metadata_store 2>&1 > /dev/null
+                  diff_status=$?
+                  if [ $diff_status -ne 0 ]; then
+                    do_unlink=true
+                    do_link=true
+                  fi
+                else
+                  do_link=true
+                fi
+
+                if [ $do_unlink = true ]; then
+                  $makky_executable unlink $metadata_actual $target_root
+                  rm -f $metadata_actual
+                fi
+
+                if [ $do_link = true ]; then
+                  cp $metadata_store $metadata_actual
+                  $makky_executable link $metadata_store $target_root
+                fi
+              }
+
+              __makky_activate
             '';
         }
       );

@@ -1,3 +1,3 @@
 fn main() -> makky::Status {
-    makky::run()
+    makky::App::default().run()
 }

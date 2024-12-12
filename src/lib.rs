@@ -1,10 +1,8 @@
 mod app;
-mod command;
-mod handler;
 mod metadata;
 mod symlink;
 
-pub use self::app::{run, Status};
+pub use self::app::{App, Error, Status};
 
 #[cfg(test)]
 mod tests;

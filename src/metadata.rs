@@ -1,14 +1,15 @@
 use std::{
+    cmp::Ordering,
     collections::HashSet,
     error,
     fmt,
-    fs::File,
+    fs,
     io::{self, BufRead, BufReader, Lines, Write},
     path::{Path, PathBuf},
 };
 
 pub fn write_entry(config_path: PathBuf, new_entry: &NewEntry) -> Result<(), Error> {
-    let mut config_file = File::options()
+    let mut config_file = fs::File::options()
         .create(true)
         .append(true)
         .open(config_path)
@@ -20,7 +21,9 @@ pub fn write_entry(config_path: PathBuf, new_entry: &NewEntry) -> Result<(), Err
         .map_err(Error::WriteNewEntry)
 }
 
-pub fn read_entries(config_path: PathBuf, target_root: PathBuf) -> Result<Vec<Entry>, Error> {
+pub fn read_entries(config_path: impl AsRef<Path>, target_root: impl AsRef<Path>) -> Result<Vec<Entry>, Error> {
+    let target_root = target_root.as_ref().to_path_buf();
+
     if !target_root.is_absolute() {
         return Err(Error::TargetRootNotAbsolute(target_root));
     }
@@ -53,6 +56,41 @@ pub fn read_entries(config_path: PathBuf, target_root: PathBuf) -> Result<Vec<En
     } else {
         Err(Error::ParseEntries(errors))
     }
+}
+
+pub fn remove(target: impl AsRef<Path>) -> Result<(), Error> {
+    let target = target.as_ref();
+    fs::remove_file(target).map_err(|err| Error::RemoveConfig {
+        err,
+        target: target.to_path_buf(),
+    })?;
+    Ok(())
+}
+
+pub fn copy(source: impl AsRef<Path>, target: impl AsRef<Path>) -> Result<(), Error> {
+    let source = source.as_ref();
+    let target = target.as_ref();
+    fs::copy(source, target).map_err(|err| Error::CopyConfig {
+        err,
+        source: source.to_path_buf(),
+        target: target.to_path_buf(),
+    })?;
+    Ok(())
+}
+
+pub fn compare(a: impl AsRef<Path>, b: impl AsRef<Path>) -> Result<Ordering, Error> {
+    read_entries_raw(a)
+        .and_then(|entries_a| read_entries_raw(b).map(|entries_b| entries_a.cmp(&entries_b)))
+        .map_err(|err| Error::CompareConfig(Box::new(err)))
+}
+
+fn read_entries_raw(config_path: impl AsRef<Path>) -> Result<Vec<(String, String)>, Error> {
+    let config_parser = ConfigParser::new(config_path)?;
+    let mut result = Vec::new();
+    for raw_entry in config_parser {
+        result.push(raw_entry?);
+    }
+    Ok(result)
 }
 
 #[derive(Debug)]
@@ -113,12 +151,12 @@ impl fmt::Display for Entry {
 }
 
 struct ConfigParser {
-    lines: Lines<BufReader<File>>,
+    lines: Lines<BufReader<fs::File>>,
 }
 
 impl ConfigParser {
-    fn new(path: PathBuf) -> Result<Self, Error> {
-        let file = File::options().read(true).open(path).map_err(Error::OpenConfig)?;
+    fn new(path: impl AsRef<Path>) -> Result<Self, Error> {
+        let file = fs::File::options().read(true).open(path).map_err(Error::OpenConfig)?;
         let reader = BufReader::new(file);
         let lines = reader.lines();
         Ok(Self { lines })
@@ -144,8 +182,17 @@ impl Iterator for ConfigParser {
 
 #[derive(Debug)]
 pub enum Error {
+    CompareConfig(Box<Error>),
+    CopyConfig {
+        err: io::Error,
+        source: PathBuf,
+        target: PathBuf,
+    },
     EntrySourceNotExists(PathBuf),
-    EntryTargetDuplicate { source: String, target: String },
+    EntryTargetDuplicate {
+        source: String,
+        target: String,
+    },
     EntryTargetExists(PathBuf),
     NewEntrySourceNotAbsolute(PathBuf),
     NewEntryTargetIsAbsolute(PathBuf),
@@ -154,6 +201,10 @@ pub enum Error {
     ParseEntrySource(io::Error),
     ParseEntryTarget(io::Error),
     ParseEntryTargetMissing,
+    RemoveConfig {
+        err: io::Error,
+        target: PathBuf,
+    },
     TargetRootNotAbsolute(PathBuf),
     TargetRootNotADirectory(PathBuf),
     WriteNewEntry(io::Error),
@@ -162,6 +213,16 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::CompareConfig(err) => write!(out, "compare config: {}", err),
+            Self::CopyConfig { err, source, target } => {
+                write!(
+                    out,
+                    "copy config: {} -> {}: {}",
+                    source.display(),
+                    target.display(),
+                    err
+                )
+            }
             Self::EntrySourceNotExists(path) => write!(out, "entry: source not exists: {}", path.display()),
             Self::EntryTargetDuplicate { source, target } => {
                 write!(out, "entry: target duplicate: {source} -> {target}",)
@@ -183,6 +244,7 @@ impl fmt::Display for Error {
             Self::ParseEntrySource(err) => write!(out, "parse entry source: {err}"),
             Self::ParseEntryTarget(err) => write!(out, "parse entry target: {err}"),
             Self::ParseEntryTargetMissing => write!(out, "parse entry target: missing"),
+            Self::RemoveConfig { err, target } => write!(out, "remove config: {}: {}", target.display(), err),
             Self::TargetRootNotAbsolute(path) => write!(out, "target root is not an absolute path: {}", path.display()),
             Self::TargetRootNotADirectory(path) => write!(out, "target root is not a directory: {}", path.display()),
             Self::WriteNewEntry(err) => write!(out, "write new entry: {err}"),
@@ -198,10 +260,13 @@ impl error::Error for Error {
             | Self::EntryTargetExists(_)
             | Self::NewEntrySourceNotAbsolute(_)
             | Self::NewEntryTargetIsAbsolute(_) => return None,
+            Self::CompareConfig(err) => err,
+            Self::CopyConfig { err, .. } => err,
             Self::OpenConfig(err) => err,
             Self::ParseEntries(_) => return None,
             Self::ParseEntrySource(err) | Self::ParseEntryTarget(err) => err,
             Self::ParseEntryTargetMissing => return None,
+            Self::RemoveConfig { err, .. } => err,
             Self::TargetRootNotAbsolute(_) | Self::TargetRootNotADirectory(_) => return None,
             Self::WriteNewEntry(err) => err,
         })

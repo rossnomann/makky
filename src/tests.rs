@@ -1,10 +1,4 @@
-use std::{
-    error::Error,
-    fs,
-    os::unix::fs::symlink as create_symlink,
-    path,
-    process::{self, Termination},
-};
+use std::{error::Error, fs, os::unix::fs::symlink as create_symlink, path, process::Termination};
 
 #[test]
 fn err_cmd_missing() {
@@ -340,10 +334,10 @@ fn ok_default_args() {
 #[test]
 fn ok_status_report() {
     let status = crate::Status::Ok;
-    assert_eq!(status.report(), process::ExitCode::SUCCESS);
+    assert_eq!(format!("{:?}", status.report()), "ExitCode(unix_exit_status(0))");
 
     let status = crate::Status::Err(crate::Error::CmdMissing);
-    assert_eq!(status.report(), process::ExitCode::FAILURE);
+    assert_eq!(format!("{:?}", status.report()), "ExitCode(unix_exit_status(1))");
 }
 
 #[test]

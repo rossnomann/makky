@@ -1,7 +1,7 @@
 use std::{
     error,
     fmt,
-    fs::{canonicalize, create_dir, create_dir_all, remove_file, DirEntry},
+    fs::{DirEntry, canonicalize, create_dir, create_dir_all, remove_file},
     io,
     os::unix::fs::symlink,
     path::{Path, PathBuf},
@@ -133,11 +133,7 @@ enum PathType {
 
 impl From<&Path> for PathType {
     fn from(value: &Path) -> Self {
-        if value.is_dir() {
-            Self::Directory
-        } else {
-            Self::File
-        }
+        if value.is_dir() { Self::Directory } else { Self::File }
     }
 }
 

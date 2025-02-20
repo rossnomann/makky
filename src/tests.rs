@@ -184,7 +184,9 @@ fn err_activate_metadata_copy_failed() {
     let err = execute_activate(&metadata_actual_path, &metadata_store_path, &context.target_root).unwrap_err();
     let metadata_actual_path = convert_path_to_string(metadata_actual_path);
     let metadata_store_path = convert_path_to_string(metadata_store_path);
-    let expected_msg = format!("activate: metadata: copy config: {metadata_store_path} -> {metadata_actual_path}: No such file or directory (os error 2)");
+    let expected_msg = format!(
+        "activate: metadata: copy config: {metadata_store_path} -> {metadata_actual_path}: No such file or directory (os error 2)"
+    );
     assert_eq!(err.to_string(), expected_msg);
     let err_source = err.source().unwrap();
     assert!(err_source.source().is_some());

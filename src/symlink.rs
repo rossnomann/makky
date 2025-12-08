@@ -154,10 +154,10 @@ fn create_directory(source: &Path, target: &Path) -> Result<(), Error> {
 }
 
 fn create_file(source: &Path, target: &Path) -> Result<(), Error> {
-    if let Some(parent) = target.parent() {
-        if !parent.exists() {
-            create_dir_all(parent).map_err(|err| Error::create_parent(err, target))?;
-        }
+    if let Some(parent) = target.parent()
+        && !parent.exists()
+    {
+        create_dir_all(parent).map_err(|err| Error::create_parent(err, target))?;
     }
     symlink(source, target).map_err(|err| Error::create_new_symlink(err, source, target))
 }
@@ -180,12 +180,12 @@ fn remove_directory_entries(source: &Path, target: &Path) -> Result<(), Error> {
             if real_path.starts_with(source) {
                 remove(real_path, &target_entry_path)?;
             }
-        } else if target_entry_path.is_dir() {
-            if let Ok(relative_target_path) = target_entry_path.strip_prefix(target) {
-                let source_entry_path = source.join(relative_target_path);
-                if source_entry_path.is_dir() {
-                    remove_directory_entries(&source_entry_path, &target_entry_path)?;
-                }
+        } else if target_entry_path.is_dir()
+            && let Ok(relative_target_path) = target_entry_path.strip_prefix(target)
+        {
+            let source_entry_path = source.join(relative_target_path);
+            if source_entry_path.is_dir() {
+                remove_directory_entries(&source_entry_path, &target_entry_path)?;
             }
         }
     }

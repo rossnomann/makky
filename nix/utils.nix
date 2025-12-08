@@ -1,14 +1,15 @@
 { lib }:
 let
-  safeCharactersList =
-    [
-      "+"
-      "."
-      "_"
-      "?"
-      "="
-    ]
-    ++ lib.strings.lowerChars ++ lib.strings.upperChars ++ lib.strings.stringToCharacters "0123456789";
+  safeCharactersList = [
+    "+"
+    "."
+    "_"
+    "?"
+    "="
+  ]
+  ++ lib.strings.lowerChars
+  ++ lib.strings.upperChars
+  ++ lib.strings.stringToCharacters "0123456789";
   mkReplacementCharactersList = l: lib.genList (x: "") (lib.length l);
   replacementSafeCharactersList = mkReplacementCharactersList safeCharactersList;
   mkStoreName =

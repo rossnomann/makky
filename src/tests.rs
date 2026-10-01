@@ -80,7 +80,7 @@ fn err_register_metadata_not_found() {
     .unwrap_err();
     assert_eq!(
         err.to_string(),
-        format!("register: open config: No such file or directory (os error 2)")
+        String::from("register: open config: No such file or directory (os error 2)")
     );
     let err_source = err.source().unwrap();
     assert!(err_source.source().is_some());
@@ -103,7 +103,7 @@ fn err_register_metadata_readonly() {
     .unwrap_err();
     assert_eq!(
         err.to_string(),
-        format!("register: open config: Permission denied (os error 13)")
+        String::from("register: open config: Permission denied (os error 13)")
     );
     let err_source = err.source().unwrap();
     assert!(err_source.source().is_some());
@@ -139,7 +139,7 @@ fn err_activate_metadata_actual_is_dir() {
     let err = execute_activate(&metadata_actual_path, &metadata_store_path, &context.target_root).unwrap_err();
     assert_eq!(
         err.to_string(),
-        format!("activate: metadata: compare config: parse entry source: Is a directory (os error 21)")
+        String::from("activate: metadata: compare config: parse entry source: Is a directory (os error 21)")
     );
     let err_metadata = err.source().unwrap();
     let err_io = err_metadata.source().unwrap();

@@ -117,7 +117,7 @@ impl NewEntry {
     }
 
     fn serialize(&self) -> String {
-        format!("{}\n{}\n", &self.source, &self.target)
+        format!("{}\n{}\n", self.source, self.target)
     }
 }
 
